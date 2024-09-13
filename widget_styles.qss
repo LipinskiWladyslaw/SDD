@@ -1,0 +1,94 @@
+QWidget {
+  font-size: 16pt;
+}
+
+#stationTitle {
+    font-weight: bold;
+    color: #666;
+}
+
+QSpinBox {
+    height: 60px;
+    border: 1px solid #aaa;
+}
+
+QSpinBox::up-button , QSpinBox::down-button {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #666;
+    background: #fff;
+}
+
+#frequencySpinner {
+    width: 120px;
+    font-size: 24pt;
+    font-weight: bold;
+    background: #ddd;
+}
+
+QSpinBox::up-arrow {
+    image: url(:/img/chevron_up.png);
+}
+
+QSpinBox::down-arrow, QComboBox::down-arrow {
+    image: url(:/img/chevron_down.png);
+}
+
+QSpinBox::up-arrow, QSpinBox::down-arrow {
+    width: 18px;
+    height: 30px;
+}
+
+#frequencySpinnerStepList {
+    height: 60px;
+}
+
+
+QComboBox {
+    height: 30px;
+    width: 30px;
+    padding-left: 15px;
+    padding-right: 10px;
+    border: 1px solid #aaa;
+}
+
+
+QComboBox::drop-down  {
+    width: 30px;
+   border: 1px solid #aaa;
+   background: #fff;
+}
+
+QComboBox::down-arrow  {
+    width: 18px;
+    height: 30px;
+    image: url(:/img/chevron_down.png);
+}
+
+QListWidget {
+    background: #fff;
+    border: 1px solid #aaa;
+    padding: 10px;
+    min-height: 300px;
+}
+
+#iteratorFrequencyPresetHelp {
+    width: 30px;
+    height: 30px;
+    qproperty-iconSize: 24px;
+}
+
+#iteratorToggle {
+    width: 60px;
+    height: 60px;
+    qproperty-iconSize: 48px;
+    border: 1px solid #333;
+}
+
+#iteratorDelaySpinner {
+    max-width: 80px;
+}
+
+
+
+

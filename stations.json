@@ -1,0 +1,26 @@
+[
+    {
+      "stationName": 401,
+      "rabbitQueue": "frequency401",
+      "location": "Impulse",
+      "defaultPresetName": "1.2"
+    },
+    {
+      "stationName": 464,
+      "rabbitQueue": "frequency464",
+      "location": "Test",
+      "defaultPresetName": "1.2"
+    },
+    {
+      "stationName": 386,
+      "rabbitQueue": "frequency386",
+      "location": "Resonance",
+      "defaultPresetName": "1.2"
+    },
+    {
+      "stationName": 463,
+      "rabbitQueue": "frequency463",
+      "location": "Vector",
+      "defaultPresetName": "1.2"
+    }
+]
