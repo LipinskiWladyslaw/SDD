@@ -3,6 +3,7 @@
         "widget.py",
         "station.py",
         "utility.py",
-        "iterator.py"
+        "iterator.py",
+        "rabbitMQ_utils.py"
     ]
 }

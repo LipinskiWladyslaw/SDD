@@ -4,9 +4,18 @@ from PySide6.QtWidgets import (
 QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSpinBox, QComboBox, QListWidget,
 QGroupBox, QButtonGroup, QGridLayout, QRadioButton, QToolButton, QDialog
 )
-from PySide6.QtCore import Signal, Slot, Qt, QMetaEnum, QThread, QEventLoop, QTimer
+from PySide6.QtCore import Signal, Slot, Qt, QMetaEnum, QThread, QTimer
 from PySide6.QtGui import QPixmap, QIcon
 from iterator import FrequencyIterator
+from utility import findPresetByName
+from rabbitMQ_utils import RabbitMQPublisher, RabbitMQConsumer
+
+import threading
+import logging
+
+LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
+              '-35s %(lineno) -5d: %(message)s')
+LOGGER = logging.getLogger(__name__)
 
 # TODO: history track frequency/RSSI
 # TODO: global STOP button
@@ -23,14 +32,23 @@ class StationWidget(QWidget):
     defaultIteratorDelay = 3
     defaultIteratorMode = IteratorMode.WithinPreset
 
+    publishFrequency = Signal(str)
+    requestRabbitMQSetup = Signal()
+    rabbitMQPublisherStart = Signal()
+    rabbitMQConsumerStart = Signal()
 
     def __init__(self, config, presets, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+
         self.presets = presets
         self.config = config
+        self.currentPreset = findPresetByName(config["defaultPresetName"], config, presets)
 
-        self.frequency = 1000
+        self.stationName = self.config["stationName"]
+
+        self.frequency = self.currentPreset["minFrequency"]
         self.frequencyHistory = []
         self.frequencyStep = 10
         self.isFrequencyIteratorActive = False
@@ -41,13 +59,9 @@ class StationWidget(QWidget):
         self.frequencyStepOptions = ['1', '5', '10', '20']
         self.maxHistoryLength = 50
 
-
-        self.currentPreset = self.findPresetByName(config["defaultPresetName"])
-
         self.frequencySpinnerMinimum = self.currentPreset["minFrequency"]
         self.frequencySpinnerMaximum = self.currentPreset["maxFrequency"]
         self.frequencySpinnerDefaultStep = 10
-
 
         # Setup UI elements
         self.setupUiElements()
@@ -61,7 +75,18 @@ class StationWidget(QWidget):
         # Sync UI with data
         self.syncUI()
 
+        # Setup RabbitMQ
+        self.requestRabbitMQSetup.connect(self.setupRabbitMQ)
+        QTimer.singleShot(100, lambda :self.requestRabbitMQSetup.emit())
 
+
+    @Slot(str)
+    def onPublishedCallback(self, value):
+        print(f'PUBLISHED: {value}')
+
+    @Slot(str)
+    def onReceivedCallback(self, value):
+        print(f'RECEIVED: {value}')
 
     def setupUiElements(self):
         self.stationTitle = QLabel(
@@ -167,7 +192,6 @@ class StationWidget(QWidget):
         self.iteratorDelaySpinner.valueChanged.connect(self.setIteratorDelay)
 
 
-
     def syncUI(self):
         self.frequencySpinner.setValue(self.frequency)
 
@@ -183,11 +207,47 @@ class StationWidget(QWidget):
         elif self.iteratorMode == IteratorMode.ByStep:
             self.iteratorFrequencyByStepModeRadio.setChecked(True)
 
-        self.iteratorFrequencyPresetList.setCurrentIndex(self.presets.index(self.findPresetByName(self.currentPreset['name'])))
+        self.iteratorFrequencyPresetList.setCurrentIndex(
+            self.presets.index(findPresetByName(self.currentPreset['name'], self.config, self.presets))
+        )
 
         self.iteratorToggle.setIcon(self.stopIcon if self.isFrequencyIteratorActive else self.playIcon)
 
         self.iteratorDelaySpinner.setValue(self.iteratorDelay)
+
+
+    def closeEvent(self):
+        print('CLOSING EMIT------------------------------')
+        self.onClose.emit()
+
+    def setupRabbitMQ(self):
+
+        self.rabbitMQPublisher = RabbitMQPublisher(self.stationName)
+
+        self.publisherThread = QThread()
+        self.rabbitMQPublisher.moveToThread(self.publisherThread)
+        self.publisherThread.start()
+
+        self.publishFrequency.connect(self.rabbitMQPublisher.publish)
+        self.rabbitMQPublisher.published.connect(self.onPublishedCallback)
+        self.rabbitMQPublisherStart.connect(self.rabbitMQPublisher.start)
+
+        self.rabbitMQPublisherStart.emit()
+
+
+        self.rabbitMQConsumer = RabbitMQConsumer(self.stationName)
+
+        self.consumerThread = QThread()
+        self.rabbitMQConsumer.moveToThread(self.consumerThread)
+        self.consumerThread.start()
+
+        self.rabbitMQConsumer.received.connect(self.onReceivedCallback)
+        self.rabbitMQConsumerStart.connect(self.rabbitMQConsumer.start)
+
+        self.rabbitMQConsumerStart.emit()
+
+
+
 
 
     @Slot(int)
@@ -206,9 +266,11 @@ class StationWidget(QWidget):
 
         self.addToFrequencyHistory(frequencyInt)
 
-
+        self.publishFrequency.emit(str(frequencyInt))
 
         self.syncUI()
+
+
 
 
 
@@ -229,6 +291,7 @@ class StationWidget(QWidget):
             self.restartIterator()
 
         self.syncUI()
+
 
 
 
@@ -286,6 +349,19 @@ class StationWidget(QWidget):
         self.syncUI()
 
 
+
+
+    @Slot()
+    def showPresetFrequenciesDialog(self):
+        dialog = FrequencyPresetListDialog(self.currentPreset)
+        dialog.exec_()
+
+
+    @Slot(str)
+    def publishStationFrequency(self, frequency):
+        self.rabbitMQPublisher.publish(frequency)
+
+
     def startIterator(self, implicitTrigger):
         self.isFrequencyIteratorActive = True
         self.syncUI()
@@ -317,22 +393,6 @@ class StationWidget(QWidget):
         QTimer.singleShot(100, self, lambda: self.startIterator(False))
 
 
-    @Slot()
-    def showPresetFrequenciesDialog(self):
-        dialog = FrequencyPresetListDialog(self.currentPreset)
-        dialog.exec_()
-
-
-
-    def findPresetByName(self, presetName):
-        found = next((preset for preset in self.presets if preset["name"] == presetName), None)
-        if not found:
-            raise Exception(
-                f'Failed to setup default preset {self.config["defaultPresetName"]}\n'
-                f'for {self.config["location"]} [{self.config["stationName"]}]\n'
-                f'Station\'s "defaultPresetName" from stations.json should match existing preset "name" from presets.json'
-            )
-        return found
 
 
 

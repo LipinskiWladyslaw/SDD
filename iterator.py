@@ -32,11 +32,6 @@ class FrequencyIterator(QObject):
 
             currentIndex = self.findFrequencyIndexInList(list, current)
 
-        print(list[:10])
-        print(current)
-        print(type(current))
-        print(f'isExactIndex: {isExactIndex}')
-
         nextIndex = currentIndex if not isExactIndex else currentIndex + 1
 
         if self.implicitTrigger:
