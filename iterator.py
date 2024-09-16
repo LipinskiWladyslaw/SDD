@@ -26,7 +26,7 @@ class FrequencyIterator(QObject):
         isExactIndex = True
 
         try:
-            currentIndex = list.index(str(current))
+            currentIndex = list.index(current)
         except ValueError:
             isExactIndex = False
 
@@ -88,22 +88,9 @@ class FrequencyIterator(QObject):
     def findFrequencyIndexInList(self, list, frequency):
         i = 0
 
-        while int(list[i]) < frequency:
+        while int(list[i]) < int(frequency):
             i += 1
             if i >= len(list):
                 return 0
 
         return i
-
-# find excact
-# save is exact
-
-
-
-
-
-
-
-
-# if __name__ == "__main__":
-#     pass

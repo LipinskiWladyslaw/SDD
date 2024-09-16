@@ -6,11 +6,11 @@ import pika
 class RabbitMQPublisher(QObject):
     published = Signal(str)
 
-    def __init__(self, stationName):
+    def __init__(self, queue, exchange):
         super().__init__()
 
-        self.queue = f'frequency{stationName}'
-        self.exchange = f'frequency{stationName}'
+        self.queue = queue
+        self.exchange = exchange
 
     @Slot()
     def start(self):
@@ -38,11 +38,10 @@ class RabbitMQPublisher(QObject):
 class RabbitMQConsumer(QObject):
     received = Signal(str)
 
-    def __init__(self, stationName):
+    def __init__(self, queue):
         super().__init__()
 
-        self.queue = f'RSSI{stationName}'
-
+        self.queue = queue
 
     @Slot()
     def start(self):

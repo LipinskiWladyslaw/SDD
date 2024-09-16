@@ -8,9 +8,7 @@ from PySide6.QtCore import Signal, Slot, Qt, QMetaEnum, QThread, QTimer
 from PySide6.QtGui import QPixmap, QIcon
 from iterator import FrequencyIterator
 from utility import findPresetByName
-from rabbitMQ_utils import RabbitMQPublisher, RabbitMQConsumer
 
-import threading
 import logging
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
@@ -18,9 +16,9 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOGGER = logging.getLogger(__name__)
 
 # TODO: history track frequency/RSSI
-# TODO: global STOP button
 # TODO: Stop iterator button(reset frequency preset index)
 # TODO: 1.2/5.8 iterator restart?
+# TODO: station status label (write text in each method)
 
 class IteratorMode(QMetaEnum):
     WithinPreset = 'Within Preset'
@@ -32,15 +30,17 @@ class StationWidget(QWidget):
     defaultIteratorDelay = 3
     defaultIteratorMode = IteratorMode.WithinPreset
 
+    insertFrequency = Signal(str)
+    stopStation = Signal()
+    syncWithCurrentStation = Signal(str, str)
     publishFrequency = Signal(str)
-    requestRabbitMQSetup = Signal()
     rabbitMQPublisherStart = Signal()
     rabbitMQConsumerStart = Signal()
 
     def __init__(self, config, presets, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+        # logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
         self.presets = presets
         self.config = config
@@ -59,8 +59,8 @@ class StationWidget(QWidget):
         self.frequencyStepOptions = ['1', '5', '10', '20']
         self.maxHistoryLength = 50
 
-        self.frequencySpinnerMinimum = self.currentPreset["minFrequency"]
-        self.frequencySpinnerMaximum = self.currentPreset["maxFrequency"]
+        self.frequencySpinnerMinimum = int(self.currentPreset["minFrequency"])
+        self.frequencySpinnerMaximum = int(self.currentPreset["maxFrequency"])
         self.frequencySpinnerDefaultStep = 10
 
         # Setup UI elements
@@ -74,10 +74,6 @@ class StationWidget(QWidget):
 
         # Sync UI with data
         self.syncUI()
-
-        # Setup RabbitMQ
-        self.requestRabbitMQSetup.connect(self.setupRabbitMQ)
-        QTimer.singleShot(100, lambda :self.requestRabbitMQSetup.emit())
 
 
     @Slot(str)
@@ -95,18 +91,30 @@ class StationWidget(QWidget):
             objectName='stationTitle'
             )
 
+        self.frequencySyncButton = QToolButton(
+            self,
+            objectName='frequencySyncButton',
+            toolTip='Sync all station to current frequency'
+        )
+        self.frequencySyncButton.setIcon(QIcon(QPixmap(':/img/sync.png')))
+
         self.frequencySpinner = QSpinBox(
             self,
             minimum=self.frequencySpinnerMinimum,
             maximum=self.frequencySpinnerMaximum,
             singleStep=self.frequencySpinnerDefaultStep,
-            objectName='frequencySpinner'
+            objectName='frequencySpinner',
+            toolTip='Current frequency'
         )
 
-        self.frequencySpinnerStepList = QComboBox(self, objectName='frequencySpinnerStepList')
+        self.frequencySpinnerStepList = QComboBox(
+            self,
+            objectName='frequencySpinnerStepList',
+            toolTip='Frequency spinner step'
+        )
         self.frequencySpinnerStepList.addItems(self.frequencyStepOptions)
 
-        self.frequencyHistoryList = QListWidget(self)
+        self.frequencyHistoryList = QListWidget(self, toolTip='History of recent set frequencies')
 
         self.iteratorFrequencyWithinPresetModeRadio = QRadioButton(IteratorMode.WithinPreset)
         self.iteratorFrequencyByStepModeRadio = QRadioButton(IteratorMode.ByStep)
@@ -115,17 +123,21 @@ class StationWidget(QWidget):
         self.iteratorFrequencyRadioGroup.addButton(self.iteratorFrequencyWithinPresetModeRadio)
         self.iteratorFrequencyRadioGroup.addButton(self.iteratorFrequencyByStepModeRadio)
 
-        self.iteratorFrequencyPresetList = QComboBox(self)
+        self.iteratorFrequencyPresetList = QComboBox(self, toolTip='Selected frequencies preset')
         self.iteratorFrequencyPresetList.addItems(map(lambda preset:preset["name"], self.presets))
 
-        self.iteratorFrequencyPresetHelp = QToolButton(self, objectName='iteratorFrequencyPresetHelp')
+        self.iteratorFrequencyPresetHelp = QToolButton(
+            self,
+            objectName='iteratorFrequencyPresetHelp',
+            toolTip='Browse preset frequencies list'
+        )
         self.questionMarkIcon = QIcon(QPixmap(':/img/question_mark.png'))
         self.iteratorFrequencyPresetHelp.setIcon(self.questionMarkIcon)
 
-        self.iteratorFrequencyStepList = QComboBox(self)
+        self.iteratorFrequencyStepList = QComboBox(self, toolTip='Frequency spinner step')
         self.iteratorFrequencyStepList.addItems(self.frequencyStepOptions)
 
-        self.iteratorToggle = QToolButton(self, objectName='iteratorToggle')
+        self.iteratorToggle = QToolButton(self, objectName='iteratorToggle', toolTip='Frequency iterator toggle')
         self.playIcon = QIcon(QPixmap(':/img/play.png'))
         self.stopIcon = QIcon(QPixmap(':/img/stop.png'))
 
@@ -136,7 +148,8 @@ class StationWidget(QWidget):
             self,
             minimum=self.iteratorDelayMinimum,
             maximum=self.iteratorDelayMaximum,
-            objectName='iteratorDelaySpinner'
+            objectName='iteratorDelaySpinner',
+            toolTip='Frequency iterator delay'
         )
 
 
@@ -148,6 +161,7 @@ class StationWidget(QWidget):
         mainColumnWrapper.addWidget(self.stationTitle)
 
         frequencySpinnerRow = QHBoxLayout()
+        frequencySpinnerRow.addWidget(self.frequencySyncButton)
         frequencySpinnerRow.addWidget(self.frequencySpinner)
         frequencySpinnerRow.addWidget(self.frequencySpinnerStepList)
 
@@ -175,6 +189,12 @@ class StationWidget(QWidget):
 
 
     def setupHandlers(self):
+        self.frequencySyncButton.clicked.connect(
+            lambda:
+                self.syncWithCurrentStation.emit(self.frequency, self.currentPreset['name'])
+
+        )
+
         self.frequencySpinner.valueChanged.connect(self.setFrequency)
 
         self.frequencyHistoryList.itemDoubleClicked.connect(self.onFrequencyHistoryItemDoubleClicked)
@@ -191,9 +211,13 @@ class StationWidget(QWidget):
 
         self.iteratorDelaySpinner.valueChanged.connect(self.setIteratorDelay)
 
+        self.insertFrequency.connect(self.setFrequency)
+
+        self.stopStation.connect(self.terminateIterator)
+
 
     def syncUI(self):
-        self.frequencySpinner.setValue(self.frequency)
+        self.frequencySpinner.setValue(int(self.frequency))
 
         self.frequencyHistoryList.clear()
         self.frequencyHistoryList.addItems(self.frequencyHistory)
@@ -216,62 +240,26 @@ class StationWidget(QWidget):
         self.iteratorDelaySpinner.setValue(self.iteratorDelay)
 
 
-    def closeEvent(self):
-        print('CLOSING EMIT------------------------------')
-        self.onClose.emit()
-
-    def setupRabbitMQ(self):
-
-        self.rabbitMQPublisher = RabbitMQPublisher(self.stationName)
-
-        self.publisherThread = QThread()
-        self.rabbitMQPublisher.moveToThread(self.publisherThread)
-        self.publisherThread.start()
-
-        self.publishFrequency.connect(self.rabbitMQPublisher.publish)
-        self.rabbitMQPublisher.published.connect(self.onPublishedCallback)
-        self.rabbitMQPublisherStart.connect(self.rabbitMQPublisher.start)
-
-        self.rabbitMQPublisherStart.emit()
-
-
-        self.rabbitMQConsumer = RabbitMQConsumer(self.stationName)
-
-        self.consumerThread = QThread()
-        self.rabbitMQConsumer.moveToThread(self.consumerThread)
-        self.consumerThread.start()
-
-        self.rabbitMQConsumer.received.connect(self.onReceivedCallback)
-        self.rabbitMQConsumerStart.connect(self.rabbitMQConsumer.start)
-
-        self.rabbitMQConsumerStart.emit()
-
-
-
-
-
     @Slot(int)
     @Slot(str)
     def setFrequency(self, frequency):
-        frequencyInt = int()
+        print(f'SET: {frequency}')
+        frequencyStr = str()
         if isinstance(frequency, int):
-            frequencyInt = frequency
+            frequencyStr = str(frequency)
         elif isinstance(frequency, str):
-            frequencyInt = int(frequency)
+            frequencyStr = frequency
 
-        if frequencyInt == self.frequency:
+        if frequencyStr == self.frequency:
             return
 
-        self.frequency = frequencyInt
+        self.frequency = frequencyStr
 
-        self.addToFrequencyHistory(frequencyInt)
+        self.addToFrequencyHistory(frequencyStr)
 
-        self.publishFrequency.emit(str(frequencyInt))
+        self.publishFrequency.emit(frequencyStr)
 
         self.syncUI()
-
-
-
 
 
     @Slot(int)
@@ -279,7 +267,6 @@ class StationWidget(QWidget):
         self.frequencyStep = step
 
         self.syncUI()
-
 
 
     @Slot(IteratorMode)
@@ -293,8 +280,6 @@ class StationWidget(QWidget):
         self.syncUI()
 
 
-
-
     @Slot(int)
     def setIteratorDelay(self, delay):
         self.iteratorDelay = delay
@@ -305,15 +290,13 @@ class StationWidget(QWidget):
         self.syncUI()
 
 
-
     @Slot(int)
     def addToFrequencyHistory(self, frequency):
-        self.frequencyHistory.insert(0, str(frequency))
+        self.frequencyHistory.insert(0, frequency)
         if len(self.frequencyHistory) > self.maxHistoryLength:
             self.frequencyHistory.pop()
 
         self.syncUI()
-
 
 
     @Slot()
@@ -346,10 +329,6 @@ class StationWidget(QWidget):
         else:
             self.terminateIterator()
 
-        self.syncUI()
-
-
-
 
     @Slot()
     def showPresetFrequenciesDialog(self):
@@ -357,14 +336,9 @@ class StationWidget(QWidget):
         dialog.exec_()
 
 
-    @Slot(str)
-    def publishStationFrequency(self, frequency):
-        self.rabbitMQPublisher.publish(frequency)
-
-
     def startIterator(self, implicitTrigger):
         self.isFrequencyIteratorActive = True
-        self.syncUI()
+
         self.iterator = FrequencyIterator()
         self.iterator.frequencyRequested.connect(self.setFrequency)
 
@@ -382,10 +356,16 @@ class StationWidget(QWidget):
 
             self.iterator.start(list, self.frequency, self.iteratorDelay, implicitTrigger)
 
+        self.syncUI()
+
 
     def terminateIterator(self):
-        self.iterator.stop()
         self.isFrequencyIteratorActive = False
+        if self.iterator:
+            self.iterator.stop()
+
+        self.syncUI()
+
 
 
     def restartIterator(self):

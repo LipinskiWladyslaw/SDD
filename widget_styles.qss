@@ -4,7 +4,7 @@ QWidget {
 
 #stationTitle {
     font-weight: bold;
-    color: #666;
+    color: #333;
 }
 
 QSpinBox {
@@ -78,7 +78,11 @@ QListWidget {
     qproperty-iconSize: 24px;
 }
 
-#iteratorToggle {
+#frequencySyncButton {
+
+}
+
+#frequencySyncButton, #iteratorToggle, #stopAllButton {
     width: 60px;
     height: 60px;
     qproperty-iconSize: 48px;
@@ -89,6 +93,15 @@ QListWidget {
     max-width: 80px;
 }
 
+
+QToolButton, QSpinBox, QListWidget, QComboBox {
+    border-radius: 5px;
+    border: 1px solid #333;
+}
+
+QToolButton::hover, QSpinBox::hover, QComboBox::hover {
+    background: #eee;
+}
 
 
 

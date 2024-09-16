@@ -1,8 +1,8 @@
 [
   {
     "name": "1.2",
-    "minFrequency": 900,
-    "maxFrequency": 1700,
+    "minFrequency": "900",
+    "maxFrequency": "1700",
     "presetFrequencies": [
       "910",
       "980",
@@ -32,8 +32,8 @@
   },
   {
     "name": "5.8",
-    "minFrequency": 4900,
-    "maxFrequency": 6000,
+    "minFrequency": "4900",
+    "maxFrequency": "6000",
     "presetFrequencies": [
         "4900"
     ]
