@@ -29,7 +29,6 @@ class StationWidget(QWidget):
     defaultIteratorDelay = 3
     defaultIteratorMode = IteratorMode.WithinPreset
 
-
     stopStation = Signal()
     syncWithCurrentStation = Signal(str, str)
     localModeActivated = Signal(bool)
@@ -367,6 +366,8 @@ class StationWidget(QWidget):
         self.isLocalModeActive = not self.isLocalModeActive
 
         self.terminateIterator()
+
+        self.setStationStatus('Station is set to local mode' if self.isLocalModeActive else 'Station is listening to cloud')
 
         self.localModeActivated.emit(self.isLocalModeActive)
 

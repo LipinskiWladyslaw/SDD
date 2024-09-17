@@ -22,7 +22,8 @@ class MainWidget(QWidget):
         self.stationConfig = None
         self.stationWidgets = None
         self.presets = None
-        isStationMode = True
+        self.isStationMode = True
+        self.isLocalModeActive = False
 
         with open('frequency_presets.json') as presets_file:
             self.presets = json.load(presets_file)
@@ -30,8 +31,10 @@ class MainWidget(QWidget):
         with open('valkiria_config.json') as stationConfigFile:
             self.stationConfig = json.load(stationConfigFile)
 
-            station = StationWidget(self.stationConfig, self.presets, isStationMode)
+            station = StationWidget(self.stationConfig, self.presets, self.isStationMode)
             self.stationWidget = station
+
+            station.localModeActivated.connect(self.onLocalModeSet)
 
             self.layout().addWidget(station)
 
@@ -49,7 +52,7 @@ class MainWidget(QWidget):
         station.publisherThread.start()
 
         # station.onFrequencySet.connect(station.rabbitMQPublisher.publish)
-        station.rabbitMQPublisher.published.connect(lambda value: self.onPublishedCallback(station, value))
+        station.rabbitMQPublisher.published.connect(lambda value: self.afterPublished(station, value))
         station.rabbitMQPublisherStart.connect(station.rabbitMQPublisher.start)
 
         station.rabbitMQPublisherStart.emit()
@@ -62,22 +65,31 @@ class MainWidget(QWidget):
         station.rabbitMQConsumer.moveToThread(station.consumerThread)
         station.consumerThread.start()
 
-        station.rabbitMQConsumer.received.connect(station.setFrequency)
-        station.rabbitMQConsumer.received.connect(lambda value: self.onReceivedCallback(station, value))
+        station.rabbitMQConsumer.received.connect(lambda value: self.onReceive(station, value))
         station.rabbitMQConsumerStart.connect(station.rabbitMQConsumer.start)
 
         station.rabbitMQConsumerStart.emit()
 
 
     @Slot()
-    def onPublishedCallback(self, station, value):
-        station.setStationStatus(f'Published {value}')
-        print(f'PUBLISHED: {value}')
+    def onReceive(self, station, message):
+        print(f'isLocalModeActive: {self.isLocalModeActive}, {message}')
+        if not self.isLocalModeActive:
+            station.setFrequency(message)
+            station.setStationStatus(f'Received {message}')
+            print(f'RECEIVED: {message}')
+
 
     @Slot()
-    def onReceivedCallback(self, station, value):
-        station.setStationStatus(f'Received {value}')
-        print(f'RECEIVED: {value}')
+    def afterPublished(station, message):
+        station.setStationStatus(f'Published {message}')
+        print(f'PUBLISHED: {message}')
+
+
+    @Slot()
+    def onLocalModeSet(self, isLocalModeActive):
+        self.isLocalModeActive = isLocalModeActive
+        print(f'isLocalModeActive: {isLocalModeActive}')
 
 
 def main():
