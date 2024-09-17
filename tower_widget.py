@@ -104,6 +104,7 @@ class MainWidget(QWidget):
         station.setStationStatus(f'Published {message}')
         print(f'PUBLISHED: {message}')
 
+
     @Slot()
     def onReceived(self, station, message):
         station.setStationStatus(f'Received {message}')

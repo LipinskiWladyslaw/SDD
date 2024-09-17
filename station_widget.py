@@ -261,8 +261,6 @@ class StationWidget(QWidget):
     @Slot(int)
     @Slot(str)
     def setFrequency(self, frequency):
-        print(type(frequency))
-        print(f'SET: {frequency}')
         frequencyStr = str()
         if isinstance(frequency, int):
             frequencyStr = str(frequency)
@@ -312,7 +310,7 @@ class StationWidget(QWidget):
     @Slot(str)
     def addToFrequencyHistory(self, frequency):
         print(f'HISTORY add: {frequency}, {type(frequency)}')
-        self.frequencyHistory.insert(0, int(frequency))
+        self.frequencyHistory.insert(0, frequency)
         if len(self.frequencyHistory) > self.maxHistoryLength:
             self.frequencyHistory.pop()
 
