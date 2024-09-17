@@ -29,9 +29,10 @@ class MainWidget(QWidget):
 
         with open('tower_stations_config.json') as stationConfigsFile:
             self.stationConfigs = json.load(stationConfigsFile)
+            isStationMode = False
 
             for i in range(len(self.stationConfigs)):
-                station = StationWidget(self.stationConfigs[i], self.presets)
+                station = StationWidget(self.stationConfigs[i], self.presets, isStationMode)
                 self.stationsWidgets[i] = station
 
                 self.setupRabbitMQ(station)
@@ -97,12 +98,12 @@ class MainWidget(QWidget):
                 station.insertFrequency.emit(frequency)
 
 
-    @Slot(str)
+    @Slot()
     def onPublishedCallback(self, station, value):
         station.setStationStatus(f'Published {value}')
         print(f'PUBLISHED: {value}')
 
-    @Slot(str)
+    @Slot()
     def onReceivedCallback(self, station, value):
         station.setStationStatus(f'Received {value}')
         print(f'RECEIVED: {value}')

@@ -22,6 +22,7 @@ class MainWidget(QWidget):
         self.stationConfig = None
         self.stationWidgets = None
         self.presets = None
+        isStationMode = True
 
         with open('frequency_presets.json') as presets_file:
             self.presets = json.load(presets_file)
@@ -29,7 +30,7 @@ class MainWidget(QWidget):
         with open('valkiria_config.json') as stationConfigFile:
             self.stationConfig = json.load(stationConfigFile)
 
-            station = StationWidget(self.stationConfig, self.presets)
+            station = StationWidget(self.stationConfig, self.presets, isStationMode)
             self.stationWidget = station
 
             self.layout().addWidget(station)

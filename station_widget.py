@@ -1,7 +1,7 @@
 # This Python file uses the following encoding: utf-8
 
 from PySide6.QtWidgets import (
-QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSpinBox, QComboBox, QListWidget,
+QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSpinBox, QComboBox, QListWidget, QCheckBox,
 QGroupBox, QButtonGroup, QGridLayout, QRadioButton, QToolButton, QDialog
 )
 from PySide6.QtCore import Signal, Slot, Qt, QMetaEnum, QThread, QTimer
@@ -32,21 +32,24 @@ class StationWidget(QWidget):
 
     stopStation = Signal()
     syncWithCurrentStation = Signal(str, str)
+    localModeActivated = Signal(bool)
     onFrequencySet = Signal(str)
     rabbitMQPublisherStart = Signal()
     rabbitMQConsumerStart = Signal()
 
-    def __init__(self, config, presets, *args, **kwargs):
+    def __init__(self, config, presets, isStationMode, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
         self.presets = presets
         self.config = config
+        self.isStationMode = isStationMode
         self.currentPreset = findPresetByName(config["defaultPresetName"], config, presets)
 
         self.stationName = self.config["stationName"]
 
+        self.isLocalModeActive = not isStationMode
         self.frequency = self.currentPreset["minFrequency"]
         self.frequencyHistory = []
         self.frequencyStep = 10
@@ -82,15 +85,19 @@ class StationWidget(QWidget):
             objectName='stationTitle'
             )
 
+        self.cloudSyncToggle = QToolButton(
+            objectName='cloudSyncToggle',
+            toolTip='Toggle cloud sync'
+        )
+        self.cloudSyncToggle.setIcon(QIcon(QPixmap(':/img/cloud-sync.webp')))
+
         self.frequencySyncButton = QToolButton(
-            self,
             objectName='frequencySyncButton',
             toolTip='Sync all station to current frequency'
         )
         self.frequencySyncButton.setIcon(QIcon(QPixmap(':/img/sync.png')))
 
         self.frequencySpinner = QSpinBox(
-            self,
             minimum=self.frequencySpinnerMinimum,
             maximum=self.frequencySpinnerMaximum,
             singleStep=self.frequencySpinnerDefaultStep,
@@ -99,13 +106,12 @@ class StationWidget(QWidget):
         )
 
         self.frequencySpinnerStepList = QComboBox(
-            self,
             objectName='frequencySpinnerStepList',
             toolTip='Frequency spinner step'
         )
         self.frequencySpinnerStepList.addItems(self.frequencyStepOptions)
 
-        self.frequencyHistoryList = QListWidget(self, toolTip='History of recent set frequencies')
+        self.frequencyHistoryList = QListWidget(toolTip='History of recent set frequencies')
 
         self.iteratorFrequencyWithinPresetModeRadio = QRadioButton(IteratorMode.WithinPreset)
         self.iteratorFrequencyByStepModeRadio = QRadioButton(IteratorMode.ByStep)
@@ -114,21 +120,20 @@ class StationWidget(QWidget):
         self.iteratorFrequencyRadioGroup.addButton(self.iteratorFrequencyWithinPresetModeRadio)
         self.iteratorFrequencyRadioGroup.addButton(self.iteratorFrequencyByStepModeRadio)
 
-        self.iteratorFrequencyPresetList = QComboBox(self, toolTip='Selected frequencies preset')
+        self.iteratorFrequencyPresetList = QComboBox(toolTip='Selected frequencies preset')
         self.iteratorFrequencyPresetList.addItems(map(lambda preset:preset["name"], self.presets))
 
         self.iteratorFrequencyPresetHelp = QToolButton(
-            self,
             objectName='iteratorFrequencyPresetHelp',
             toolTip='Browse preset frequencies list'
         )
         self.questionMarkIcon = QIcon(QPixmap(':/img/question_mark.png'))
         self.iteratorFrequencyPresetHelp.setIcon(self.questionMarkIcon)
 
-        self.iteratorFrequencyStepList = QComboBox(self, toolTip='Frequency spinner step')
+        self.iteratorFrequencyStepList = QComboBox( toolTip='Frequency spinner step')
         self.iteratorFrequencyStepList.addItems(self.frequencyStepOptions)
 
-        self.iteratorToggle = QToolButton(self, objectName='iteratorToggle', toolTip='Frequency iterator toggle')
+        self.iteratorToggle = QToolButton(objectName='iteratorToggle', toolTip='Frequency iterator toggle')
         self.playIcon = QIcon(QPixmap(':/img/play.png'))
         self.stopIcon = QIcon(QPixmap(':/img/stop.png'))
 
@@ -153,7 +158,7 @@ class StationWidget(QWidget):
         mainColumnWrapper.addWidget(self.stationTitle)
 
         frequencySpinnerRow = QHBoxLayout()
-        frequencySpinnerRow.addWidget(self.frequencySyncButton)
+        frequencySpinnerRow.addWidget(self.cloudSyncToggle if self.isStationMode else self.frequencySyncButton)
         frequencySpinnerRow.addWidget(self.frequencySpinner)
         frequencySpinnerRow.addWidget(self.frequencySpinnerStepList)
 
@@ -183,10 +188,11 @@ class StationWidget(QWidget):
 
 
     def setupHandlers(self):
+        self.cloudSyncToggle.clicked.connect(self.toggleCloudSync)
+
         self.frequencySyncButton.clicked.connect(
             lambda:
                 self.syncWithCurrentStation.emit(self.frequency, self.currentPreset['name'])
-
         )
 
         self.frequencySpinner.valueChanged.connect(self.setFrequency)
@@ -209,6 +215,11 @@ class StationWidget(QWidget):
 
 
     def syncUI(self):
+        if self.isLocalModeActive:
+            self.cloudSyncToggle.setStyleSheet('border: 5px solid #b8b8b8;')
+        else:
+            self.cloudSyncToggle.setStyleSheet('border: 5px solid #5eba74;')
+
         self.frequencySpinner.setValue(int(self.frequency))
 
         self.frequencyHistoryList.clear()
@@ -230,6 +241,22 @@ class StationWidget(QWidget):
         self.iteratorToggle.setIcon(self.stopIcon if self.isFrequencyIteratorActive else self.playIcon)
 
         self.iteratorDelaySpinner.setValue(self.iteratorDelay)
+
+        disabled = not self.isLocalModeActive
+
+        self.iteratorFrequencyStepList.setDisabled(disabled)
+        self.frequencySpinner.setDisabled(disabled)
+        self.frequencySpinnerStepList.setDisabled(disabled)
+        self.frequencyHistoryList.setDisabled(disabled)
+
+        self.iteratorFrequencyWithinPresetModeRadio.setDisabled(disabled)
+        self.iteratorFrequencyByStepModeRadio.setDisabled(disabled)
+        self.iteratorFrequencyPresetHelp.setDisabled(disabled)
+
+        self.iteratorFrequencyPresetList.setDisabled(disabled)
+        self.iteratorFrequencyStepList.setDisabled(disabled)
+        self.iteratorToggle.setDisabled(disabled)
+        self.iteratorDelaySpinner.setDisabled(disabled)
 
 
     @Slot(int)
@@ -285,6 +312,7 @@ class StationWidget(QWidget):
 
     @Slot(str)
     def addToFrequencyHistory(self, frequency):
+        print(f'HISTORY add: {frequency}, {type(frequency)}')
         self.frequencyHistory.insert(0, int(frequency))
         if len(self.frequencyHistory) > self.maxHistoryLength:
             self.frequencyHistory.pop()
@@ -334,6 +362,17 @@ class StationWidget(QWidget):
         self.stationStatus.setText(status)
 
 
+    @Slot(bool)
+    def toggleCloudSync(self):
+        self.isLocalModeActive = not self.isLocalModeActive
+
+        self.terminateIterator()
+
+        self.localModeActivated.emit(self.isLocalModeActive)
+
+        self.syncUI()
+
+
     def startIterator(self, implicitTrigger):
         self.isFrequencyIteratorActive = True
 
@@ -346,8 +385,8 @@ class StationWidget(QWidget):
         elif self.iteratorMode == IteratorMode.ByStep:
             list = []
             for value in range(
-                self.currentPreset["minFrequency"],
-                self.currentPreset["maxFrequency"],
+                int(self.currentPreset["minFrequency"]),
+                int(self.currentPreset["maxFrequency"]),
                 self.frequencyStep
             ):
                 list.append(str(value))

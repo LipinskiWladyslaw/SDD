@@ -6,5 +6,6 @@
     <file>img/chevron_up.png</file>
     <file>img/chevron_down.png</file>
     <file>img/sync.png</file>
+    <file>img/cloud-sync.webp</file>
 </qresource>
 </RCC>
