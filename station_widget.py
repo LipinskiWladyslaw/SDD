@@ -32,7 +32,7 @@ class StationWidget(QWidget):
 
     stopStation = Signal()
     syncWithCurrentStation = Signal(str, str)
-    publishFrequency = Signal(str)
+    onFrequencySet = Signal(str)
     rabbitMQPublisherStart = Signal()
     rabbitMQConsumerStart = Signal()
 
@@ -74,14 +74,6 @@ class StationWidget(QWidget):
         # Sync UI with data
         self.syncUI()
 
-
-    @Slot(str)
-    def onPublishedCallback(self, value):
-        print(f'PUBLISHED: {value}')
-
-    @Slot(str)
-    def onReceivedCallback(self, value):
-        print(f'RECEIVED: {value}')
 
     def setupUiElements(self):
         self.stationTitle = QLabel(
@@ -151,6 +143,7 @@ class StationWidget(QWidget):
             toolTip='Frequency iterator delay'
         )
 
+        self.stationStatus = QLabel('.', objectName='stationStatus')
 
 
     def setupUiLayout(self):
@@ -184,6 +177,8 @@ class StationWidget(QWidget):
         iteratorToggleRow.addWidget(self.iteratorToggle)
         iteratorToggleRow.addWidget(self.iteratorDelaySpinner)
         mainColumnWrapper.addLayout(iteratorToggleRow)
+
+        mainColumnWrapper.addWidget(self.stationStatus)
 
 
 
@@ -255,7 +250,7 @@ class StationWidget(QWidget):
 
         self.addToFrequencyHistory(frequencyStr)
 
-        self.publishFrequency.emit(frequencyStr)
+        self.onFrequencySet.emit(frequencyStr)
 
         self.syncUI()
 
@@ -334,11 +329,16 @@ class StationWidget(QWidget):
         dialog.exec_()
 
 
+    @Slot()
+    def setStationStatus(self, status):
+        self.stationStatus.setText(status)
+
+
     def startIterator(self, implicitTrigger):
         self.isFrequencyIteratorActive = True
 
         self.iterator = FrequencyIterator()
-        self.iterator.frequencyRequested.connect(self.setFrequency)
+        self.iterator.emitFrequency.connect(self.setFrequency)
 
         if self.iteratorMode == IteratorMode.WithinPreset:
             self.iterator.start(self.currentPreset['presetFrequencies'], self.frequency, self.iteratorDelay, implicitTrigger)
@@ -354,6 +354,8 @@ class StationWidget(QWidget):
 
             self.iterator.start(list, self.frequency, self.iteratorDelay, implicitTrigger)
 
+        self.setStationStatus('Iterator started')
+
         self.syncUI()
 
 
@@ -361,6 +363,8 @@ class StationWidget(QWidget):
         self.isFrequencyIteratorActive = False
         if self.iterator:
             self.iterator.stop()
+
+        self.setStationStatus('Iterator terminated')
 
         self.syncUI()
 

@@ -103,5 +103,15 @@ QToolButton::hover, QSpinBox::hover, QComboBox::hover {
     background: #eee;
 }
 
+#stationStatus {
+    font-size: 14px;
+    color: #fff;
+    font-weight: 600;
+    background: #000;
+    border-top: 1px solid #333;
+    padding: 10px;
+    border-radius: 5px;
+}
+
 
 

@@ -2,7 +2,7 @@
 
 import sys
 from PySide6.QtWidgets import QApplication, QWidget, QHBoxLayout
-from PySide6.QtCore import QThread
+from PySide6.QtCore import QThread, Slot
 import json
 import widget_images
 from utility import loadQssFile
@@ -47,8 +47,8 @@ class MainWidget(QWidget):
         station.rabbitMQPublisher.moveToThread(station.publisherThread)
         station.publisherThread.start()
 
-        # station.publishFrequency.connect(station.rabbitMQPublisher.publish)
-        station.rabbitMQPublisher.published.connect(station.onPublishedCallback)
+        # station.onFrequencySet.connect(station.rabbitMQPublisher.publish)
+        station.rabbitMQPublisher.published.connect(lambda value: self.onPublishedCallback(station, value))
         station.rabbitMQPublisherStart.connect(station.rabbitMQPublisher.start)
 
         station.rabbitMQPublisherStart.emit()
@@ -62,10 +62,21 @@ class MainWidget(QWidget):
         station.consumerThread.start()
 
         station.rabbitMQConsumer.received.connect(station.setFrequency)
-        station.rabbitMQConsumer.received.connect(station.onReceivedCallback)
+        station.rabbitMQConsumer.received.connect(lambda value: self.onReceivedCallback(station, value))
         station.rabbitMQConsumerStart.connect(station.rabbitMQConsumer.start)
 
         station.rabbitMQConsumerStart.emit()
+
+
+    @Slot()
+    def onPublishedCallback(self, station, value):
+        station.setStationStatus(f'Published {value}')
+        print(f'PUBLISHED: {value}')
+
+    @Slot()
+    def onReceivedCallback(self, station, value):
+        station.setStationStatus(f'Received {value}')
+        print(f'RECEIVED: {value}')
 
 
 def main():

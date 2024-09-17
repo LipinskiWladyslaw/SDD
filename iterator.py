@@ -6,7 +6,7 @@ import threading
 from PySide6.QtCore import QObject, Signal
 
 class FrequencyIterator(QObject):
-    frequencyRequested = Signal(str)
+    emitFrequency = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -35,7 +35,7 @@ class FrequencyIterator(QObject):
         nextIndex = currentIndex if not isExactIndex else currentIndex + 1
 
         if self.implicitTrigger:
-            self.frequencyRequested.emit(list[nextIndex])
+            self.emitFrequency.emit(list[nextIndex])
             nextIndex += 1
 
         for item in list[nextIndex:]:
@@ -65,7 +65,7 @@ class FrequencyIterator(QObject):
 
     async def createTask(self, frequency, delay):
         await asyncio.sleep(self.delay)
-        self.frequencyRequested.emit(frequency)
+        self.emitFrequency.emit(frequency)
 
     def processQueue(self):
         self.loop = asyncio.new_event_loop()

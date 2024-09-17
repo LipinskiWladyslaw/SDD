@@ -60,7 +60,6 @@ class RabbitMQConsumer(QObject):
 
     @Slot(str)
     def onMessage(self, channel, method, properties, body):
-        print(f'BODY: {body} {type(body)}')
         self.received.emit(body.decode("utf-8"))
 
 

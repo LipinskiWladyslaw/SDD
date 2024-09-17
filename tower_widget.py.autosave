@@ -97,12 +97,12 @@ class MainWidget(QWidget):
                 station.insertFrequency.emit(frequency)
 
 
-    @Slot(str)
+    @Slot()
     def onPublishedCallback(self, station, value):
         station.setStationStatus(f'Published {value}')
         print(f'PUBLISHED: {value}')
 
-    @Slot(str)
+    @Slot()
     def onReceivedCallback(self, station, value):
         station.setStationStatus(f'Received {value}')
         print(f'RECEIVED: {value}')
