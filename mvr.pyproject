@@ -1,9 +1,10 @@
 {
     "files": [
-        "widget.py",
-        "station.py",
+        "tower_widget.py",
+        "valkiria_widget.py",
+        "station_widget.py",
         "utility.py",
         "iterator.py",
-        "rabbitMQ_utils.py"
+        "rabbit_utils.py"
     ]
 }

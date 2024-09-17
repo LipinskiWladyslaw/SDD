@@ -7,8 +7,8 @@ from PySide6.QtCore import Qt, Slot, QThread
 import json
 import widget_images
 from utility import loadQssFile
-from station import StationWidget
-from rabbitMQ_utils import RabbitMQPublisher, RabbitMQConsumer
+from station_widget import StationWidget
+from rabbit_utils import RabbitMQPublisher, RabbitMQConsumer
 
 
 
@@ -24,10 +24,10 @@ class MainWidget(QWidget):
         self.stationsWidgets = list(range(4))
         self.presets = list(range(4))
 
-        with open('presets.json') as presets_file:
+        with open('frequency_presets.json') as presets_file:
             self.presets = json.load(presets_file)
 
-        with open('stations.json') as stationConfigsFile:
+        with open('tower_stations_config.json') as stationConfigsFile:
             self.stationConfigs = json.load(stationConfigsFile)
 
             for i in range(len(self.stationConfigs)):
@@ -90,8 +90,6 @@ class MainWidget(QWidget):
 
     @Slot(str, str)
     def setFrequencyForAllStationsOfSameType(self, frequency, presetName):
-        print(f'frequency: {frequency} {type(frequency)}')
-        print(f'presetName: {presetName} {type(presetName)}')
         self.stopAllStations()
         for station in self.stationsWidgets:
             print(station.currentPreset['name'])

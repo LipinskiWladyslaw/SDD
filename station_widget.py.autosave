@@ -16,7 +16,6 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOGGER = logging.getLogger(__name__)
 
 # TODO: history track frequency/RSSI
-# TODO: Stop iterator button(reset frequency preset index)
 # TODO: 1.2/5.8 iterator restart?
 # TODO: station status label (write text in each method)
 
@@ -30,10 +29,10 @@ class StationWidget(QWidget):
     defaultIteratorDelay = 3
     defaultIteratorMode = IteratorMode.WithinPreset
 
-    insertFrequency = Signal(str)
+
     stopStation = Signal()
     syncWithCurrentStation = Signal(str, str)
-    publishFrequency = Signal(str)
+    onFrequencySet = Signal(str)
     rabbitMQPublisherStart = Signal()
     rabbitMQConsumerStart = Signal()
 
@@ -211,8 +210,6 @@ class StationWidget(QWidget):
 
         self.iteratorDelaySpinner.valueChanged.connect(self.setIteratorDelay)
 
-        self.insertFrequency.connect(self.setFrequency)
-
         self.stopStation.connect(self.terminateIterator)
 
 
@@ -243,6 +240,7 @@ class StationWidget(QWidget):
     @Slot(int)
     @Slot(str)
     def setFrequency(self, frequency):
+        print(type(frequency))
         print(f'SET: {frequency}')
         frequencyStr = str()
         if isinstance(frequency, int):
@@ -256,8 +254,8 @@ class StationWidget(QWidget):
         self.frequency = frequencyStr
 
         self.addToFrequencyHistory(frequencyStr)
-
-        self.publishFrequency.emit(frequencyStr)
+        
+        self.onFrequencySet.emit(frequencyStr)
 
         self.syncUI()
 
@@ -290,9 +288,9 @@ class StationWidget(QWidget):
         self.syncUI()
 
 
-    @Slot(int)
+    @Slot(str)
     def addToFrequencyHistory(self, frequency):
-        self.frequencyHistory.insert(0, frequency)
+        self.frequencyHistory.insert(0, int(frequency))
         if len(self.frequencyHistory) > self.maxHistoryLength:
             self.frequencyHistory.pop()
 
