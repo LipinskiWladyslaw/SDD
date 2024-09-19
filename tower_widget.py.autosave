@@ -65,7 +65,6 @@ class MainWidget(QWidget):
         station.publisherThread.start()
 
         station.onFrequencySet.connect(station.rabbitMQPublisher.publish)
-        station.rabbitMQPublisher.published.connect(lambda value: self.onPublished(station, value))
         station.rabbitMQPublisherStart.connect(station.rabbitMQPublisher.start)
 
         station.rabbitMQPublisherStart.emit()
@@ -94,14 +93,9 @@ class MainWidget(QWidget):
     def setFrequencyForAllStationsOfSameType(self, frequency, presetName):
         self.stopAllStations()
         for station in self.stationsWidgets:
+            print(station.currentPreset['name'])
             if station.currentPreset['name'] == presetName:
                 station.setFrequency(frequency)
-
-
-    @Slot()
-    def onPublished(self, station, message):
-        station.setStationStatus(f'Published {message}')
-        print(f'PUBLISHED: {message}')
 
 
 def main():

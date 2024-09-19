@@ -2,8 +2,7 @@
 
 import sys
 from PySide6.QtWidgets import QApplication, QWidget, QHBoxLayout
-from PySide6.QtCore import QThread, Slot, Signal, QIODevice
-from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
+from PySide6.QtCore import QThread
 import json
 import widget_images
 from utility import loadQssFile

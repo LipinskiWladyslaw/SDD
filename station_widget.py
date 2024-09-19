@@ -271,7 +271,6 @@ class StationWidget(QWidget):
 
     @Slot(str, str)
     def onAnthenaRssiReceived(self, frequency, rssi):
-        print(f'{frequency}({self.frequency}): {rssi}')
         if frequency != self.frequency:
             return
         self.setRssiForLatestFrequency(rssi)
