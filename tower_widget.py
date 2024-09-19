@@ -78,7 +78,7 @@ class MainWidget(QWidget):
         station.rabbitMQConsumer.moveToThread(station.consumerThread)
         station.consumerThread.start()
 
-        station.rabbitMQConsumer.received.connect(lambda value: self.onReceived(station, value))
+        station.rabbitMQConsumer.received.connect(station.setRssiForLatestFrequency)
         station.rabbitMQConsumerStart.connect(station.rabbitMQConsumer.start)
 
         station.rabbitMQConsumerStart.emit()
@@ -103,12 +103,6 @@ class MainWidget(QWidget):
     def onPublished(self, station, message):
         station.setStationStatus(f'Published {message}')
         print(f'PUBLISHED: {message}')
-
-
-    @Slot()
-    def onReceived(self, station, message):
-        station.setStationStatus(f'Received {message}')
-        print(f'RECEIVED: {message}')
 
 
 def main():

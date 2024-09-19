@@ -28,8 +28,9 @@ def findPresetByName(presetName, config, presets):
     found = next((preset for preset in presets if preset["name"] == presetName), None)
     if not found:
         raise Exception(
-            f'Failed to setup default preset {config["defaultPresetName"]}\n'
+            f'Failed to setup default preset {config["frequencyRange"]}\n'
             f'for {config["location"]} [{config["stationName"]}]\n'
-            f'Station\'s "defaultPresetName" from stations.json should match existing preset "name" from presets.json'
+            f'Station\'s "frequencyRange" from stations.json should match existing preset "name" from presets.json'
         )
     return found
+

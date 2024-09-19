@@ -2,13 +2,13 @@
 
 import sys
 from PySide6.QtWidgets import QApplication, QWidget, QHBoxLayout
-from PySide6.QtCore import QThread, Slot
+from PySide6.QtCore import QThread, Slot, Signal, QIODevice
+from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
 import json
 import widget_images
 from utility import loadQssFile
 from station_widget import StationWidget
 from rabbit_utils import RabbitMQPublisher, RabbitMQConsumer
-
 
 
 class MainWidget(QWidget):
@@ -23,7 +23,6 @@ class MainWidget(QWidget):
         self.stationWidgets = None
         self.presets = None
         self.isStationMode = True
-        self.isLocalModeActive = False
 
         with open('frequency_presets.json') as presets_file:
             self.presets = json.load(presets_file)
@@ -33,8 +32,6 @@ class MainWidget(QWidget):
 
             station = StationWidget(self.stationConfig, self.presets, self.isStationMode)
             self.stationWidget = station
-
-            station.localModeActivated.connect(self.onLocalModeSet)
 
             self.layout().addWidget(station)
 
@@ -51,8 +48,7 @@ class MainWidget(QWidget):
         station.rabbitMQPublisher.moveToThread(station.publisherThread)
         station.publisherThread.start()
 
-        # station.onFrequencySet.connect(station.rabbitMQPublisher.publish)
-        station.rabbitMQPublisher.published.connect(lambda value: self.afterPublished(station, value))
+        station.anthenaRssiReceived.connect(station.rabbitMQPublisher.publish)
         station.rabbitMQPublisherStart.connect(station.rabbitMQPublisher.start)
 
         station.rabbitMQPublisherStart.emit()
@@ -65,31 +61,10 @@ class MainWidget(QWidget):
         station.rabbitMQConsumer.moveToThread(station.consumerThread)
         station.consumerThread.start()
 
-        station.rabbitMQConsumer.received.connect(lambda value: self.onReceive(station, value))
+        station.rabbitMQConsumer.received.connect(station.onAnthenaFrequencyReceived)
         station.rabbitMQConsumerStart.connect(station.rabbitMQConsumer.start)
 
         station.rabbitMQConsumerStart.emit()
-
-
-    @Slot()
-    def onReceive(self, station, message):
-        print(f'isLocalModeActive: {self.isLocalModeActive}, {message}')
-        if not self.isLocalModeActive:
-            station.setFrequency(message)
-            station.setStationStatus(f'Received {message}')
-            print(f'RECEIVED: {message}')
-
-
-    @Slot()
-    def afterPublished(station, message):
-        station.setStationStatus(f'Published {message}')
-        print(f'PUBLISHED: {message}')
-
-
-    @Slot()
-    def onLocalModeSet(self, isLocalModeActive):
-        self.isLocalModeActive = isLocalModeActive
-        print(f'isLocalModeActive: {isLocalModeActive}')
 
 
 def main():

@@ -2,21 +2,21 @@
     {
       "stationName": 401,
       "location": "Impulse",
-      "defaultPresetName": "1.2"
+      "frequencyRange": "1.2"
     },
     {
       "stationName": 464,
       "location": "Test",
-      "defaultPresetName": "1.2"
+      "frequencyRange": "1.2"
     },
     {
       "stationName": 386,
       "location": "Resonance",
-      "defaultPresetName": "1.2"
+      "frequencyRange": "1.2"
     },
     {
       "stationName": 463,
       "location": "Vector",
-      "defaultPresetName": "1.2"
+      "frequencyRange": "1.2"
     }
 ]

@@ -1,5 +1,5 @@
 {
     "stationName": 464,
     "location": "Test",
-    "defaultPresetName": "1.2"
+    "frequencyRange": "1.2"
 }
