@@ -9,8 +9,10 @@ class Anthena_1_2(QObject):
     rssi_answer = ''
     currentFrequency = None
 
-    def __init__(self):
+    def __init__(self, comPort):
         super().__init__()
+
+        self.comPort = comPort
 
     def setupComPort(self):
         self.comportThread = QThread()
@@ -20,21 +22,13 @@ class Anthena_1_2(QObject):
         self.serial = QSerialPort()
         self.serial.readyRead.connect(self.onReadyRead)
 
-        self.portlist = []
-
-        for port in QSerialPortInfo().availablePorts():
-            self.portlist.append(port.portName())
-
-        print(f'portlist: {self.portlist}')
-
         self.openPort()
 
 
     def openPort(self):
-        port_name = self.portlist[0]
         if self.serial.isOpen():
             self.serial.close()
-        self.serial.setPortName(port_name)
+        self.serial.setPortName(self.comPort)
         self.serial.setBaudRate(QSerialPort.BaudRate.Baud9600)
         self.serial.setDataBits(QSerialPort.DataBits.Data8)
         self.serial.setParity(QSerialPort.Parity.NoParity)

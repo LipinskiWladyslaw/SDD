@@ -76,7 +76,7 @@ class StationWidget(QWidget):
         self.syncUI()
 
         if self.isStationMode:
-            self.setupAnthena(self.config["frequencyRange"])
+            self.setupAnthena(self.config["frequencyRange"], self.config["comPort"])
 
 
     def setupUiElements(self):
@@ -252,9 +252,9 @@ class StationWidget(QWidget):
 
 
     @Slot()
-    def setupAnthena(self, frequencyRange):
+    def setupAnthena(self, frequencyRange, comPort):
         if frequencyRange == '1.2':
-            self.anthena = Anthena_1_2()
+            self.anthena = Anthena_1_2(comPort)
             self.anthena.setupComPort()
 
             self.anthena.onRssiReceived.connect(self.onAnthenaRssiReceived)

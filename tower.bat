@@ -1,1 +1,1 @@
-python tower_widget.py
+py tower_widget.py
