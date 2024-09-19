@@ -2,7 +2,7 @@
 
 from PySide6.QtWidgets import (
 QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSpinBox, QComboBox, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
-QGroupBox, QButtonGroup, QGridLayout, QRadioButton, QToolButton, QDialog
+QGroupBox, QButtonGroup, QGridLayout, QRadioButton, QToolButton, QDialog, QListWidget
 )
 from PySide6.QtCore import Signal, Slot, Qt, QMetaEnum, QThread, QTimer
 from PySide6.QtGui import QPixmap, QIcon, QStandardItemModel, QStandardItem
