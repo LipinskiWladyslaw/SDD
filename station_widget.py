@@ -290,7 +290,7 @@ class StationWidget(QWidget):
         if not self.isLocalModeActive:
             self.setFrequency(frequency)
             self.setStationStatus(f'Received {frequency}')
-            self.anthena.setAnthenaFrequency()
+            self.anthena.setAnthenaFrequency(frequency)
 
 
     @Slot(int)
