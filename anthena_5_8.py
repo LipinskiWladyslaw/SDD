@@ -1,5 +1,5 @@
 from PySide6.QtCore import QObject, QThread, Slot, Signal, QIODevice
-from tbsfusion import TBSFusion
+from tbs_fusion import TBSFusion
 import time
 
 class Anthena_5_8(QObject):
@@ -30,8 +30,9 @@ class Anthena_5_8(QObject):
         self.fusion.set_frequency(int(frequency))
 
         # Wait for RSSI to stabilize
-        time.sleep(0.1)
-        self.getFrequencyRssi()
+        # time.sleep(1)
+        # self.getFrequencyRssi()
+
 
 
     def getFrequencyRssi(self):

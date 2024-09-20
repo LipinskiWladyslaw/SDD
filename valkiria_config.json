@@ -1,6 +1,6 @@
 {
-    "stationName": 464,
-    "location": "Test",
-    "frequencyRange": "1.2",
+    "stationName": 511,
+    "location": "Big Stan",
+    "frequencyRange": "5.8",
     "comPort": "COM6"
 }

@@ -14,8 +14,8 @@ from time import sleep
 from ppft.common import portnumber
 #from serial.serialwin32 import Serial as serial
 import serial
-from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
-from PyQt5.QtCore import QIODevice, QTimer, QSettings
+from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
+from PySide6.QtCore import QIODevice, QTimer, QSettings
 from pycrc.algorithms import Crc
 
 MSG_SYNC_VALUE_0 = 0xAA
