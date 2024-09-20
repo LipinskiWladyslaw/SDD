@@ -1,1 +1,1 @@
-py valkiria_widget.py
+python valkiria_widget.py
