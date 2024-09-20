@@ -44,6 +44,7 @@ class RabbitMQConsumer(QObject):
         super().__init__()
 
         self.queue = queue
+        self.host = RabbitHostProvider().getHost()
 
     @Slot()
     def start(self):
