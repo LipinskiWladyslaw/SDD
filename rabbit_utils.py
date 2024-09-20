@@ -2,6 +2,7 @@
 
 from PySide6.QtCore import QObject, Slot, Signal
 import pika
+from rabbit_host_provider import RabbitHostProvider
 
 class RabbitMQPublisher(QObject):
     published = Signal(str)
@@ -11,10 +12,11 @@ class RabbitMQPublisher(QObject):
 
         self.queue = queue
         self.exchange = exchange
+        self.host = RabbitHostProvider().getHost()
 
     @Slot()
     def start(self):
-        urlParams = pika.URLParameters('amqp://valkiria_user:314159265@mizar.kyiv.ua:5672/valkiria')
+        urlParams = pika.URLParameters(self.host)
         self.connection = pika.BlockingConnection(urlParams)
         self.channel = self.connection.channel()
 
@@ -45,7 +47,7 @@ class RabbitMQConsumer(QObject):
 
     @Slot()
     def start(self):
-        urlParams = pika.URLParameters('amqp://valkiria_user:314159265@mizar.kyiv.ua:5672/valkiria')
+        urlParams = pika.URLParameters(self.host)
         self.connection = pika.BlockingConnection(urlParams)
         self.channel = self.connection.channel()
 
