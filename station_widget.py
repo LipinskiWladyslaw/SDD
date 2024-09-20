@@ -8,6 +8,7 @@ from PySide6.QtCore import Signal, Slot, Qt, QMetaEnum, QThread, QTimer
 from PySide6.QtGui import QPixmap, QIcon, QStandardItemModel, QStandardItem
 from iterator import FrequencyIterator
 from anthena_1_2 import Anthena_1_2
+from anthena_5_8 import Anthena_5_8
 from utility import findPresetByName
 
 import logging
@@ -257,12 +258,16 @@ class StationWidget(QWidget):
             self.anthena = Anthena_1_2(comPort)
             self.anthena.setupComPort()
 
+            self.onFrequencySet.connect(self.anthena.setAnthenaFrequency)
             self.anthena.onRssiReceived.connect(self.onAnthenaRssiReceived)
             self.anthena.onRssiReadError.connect(self.onAnthenaRssiReadError)
 
+        elif frequencyRange == '5.8':
+            self.anthena = Anthena_5_8(comPort)
+            self.anthena.setupAnthena()
+
             self.onFrequencySet.connect(self.anthena.setAnthenaFrequency)
-        else:
-            return
+            self.anthena.onRssiReceived.connect(self.onAnthenaRssiReceived)
 
 
     @Slot(str)

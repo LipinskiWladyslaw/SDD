@@ -52,7 +52,7 @@ class Anthena_1_2(QObject):
         except:
             self.onRssiReadError.emit()
 
-
+    @Slot(str)
     def setAnthenaFrequency(self, frequency):
         if self.serial.isOpen():
             if self.currentFrequency == frequency:
