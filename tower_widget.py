@@ -3,16 +3,16 @@
 import sys
 from PySide6.QtWidgets import QApplication, QWidget, QHBoxLayout, QToolButton, QVBoxLayout, QLabel
 from PySide6.QtGui import QPixmap, QIcon
-from PySide6.QtCore import Qt, Slot, QThread
+from PySide6.QtCore import Qt, Slot
 import json
 import widget_images
 from utility import loadQssFile
 from station_widget import StationWidget
-from rabbit_utils import RabbitMQPublisher, RabbitMQConsumer
-
 
 
 class MainWidget(QWidget):
+
+    isStationMode = False # Always False for Tower widget
 
     def __init__(self, *arg, **kwargs):
         super().__init__(*arg, **kwargs)
@@ -20,27 +20,21 @@ class MainWidget(QWidget):
         self.setStyleSheet(loadQssFile('widget_styles.qss'))
         self.setLayout(QHBoxLayout())
 
-        self.stationConfigs = list(range(4))
-        self.stationsWidgets = list(range(4))
-        self.presets = list(range(4))
-        self.isStationMode = False # Always False for Tower widget
-
         with open('frequency_presets.json') as presets_file:
             self.presets = json.load(presets_file)
 
         with open('tower_stations_config.json') as stationConfigsFile:
             self.stationConfigs = json.load(stationConfigsFile)
 
+            stationsCount = len(self.stationConfigs)
+            self.stationsWidgets = list(range(stationsCount))
 
-            for i in range(len(self.stationConfigs)):
+            for i in range(stationsCount):
                 station = StationWidget(self.stationConfigs[i], self.presets, self.isStationMode)
                 self.stationsWidgets[i] = station
 
-                self.setupRabbitMQ(station)
-
                 station.syncWithCurrentStation.connect(self.setFrequencyForAllStationsOfSameType)
                 self.layout().addWidget(station)
-
 
         stopAllLayout = QVBoxLayout(spacing=10, alignment=Qt.AlignVCenter)
 
@@ -52,36 +46,6 @@ class MainWidget(QWidget):
         stopAllLayout.addWidget(QLabel('Stop All'))
 
         self.layout().addLayout(stopAllLayout)
-
-
-    def setupRabbitMQ(self, station):
-
-        publisherQueue = f'frequency{station.stationName}'
-        publisherExchange = f'frequency{station.stationName}'
-        station.rabbitMQPublisher = RabbitMQPublisher(publisherQueue, publisherExchange)
-
-        station.publisherThread = QThread()
-        station.rabbitMQPublisher.moveToThread(station.publisherThread)
-        station.publisherThread.start()
-
-        station.onFrequencySet.connect(station.rabbitMQPublisher.publish)
-        station.rabbitMQPublisher.published.connect(lambda value: self.onPublished(station, value))
-        station.rabbitMQPublisherStart.connect(station.rabbitMQPublisher.start)
-
-        station.rabbitMQPublisherStart.emit()
-
-
-        consumerQueue = f'RSSI{station.stationName}'
-        station.rabbitMQConsumer = RabbitMQConsumer(consumerQueue)
-
-        station.consumerThread = QThread()
-        station.rabbitMQConsumer.moveToThread(station.consumerThread)
-        station.consumerThread.start()
-
-        station.rabbitMQConsumer.received.connect(station.setRssiForLatestFrequency)
-        station.rabbitMQConsumerStart.connect(station.rabbitMQConsumer.start)
-
-        station.rabbitMQConsumerStart.emit()
 
 
     @Slot()
@@ -96,12 +60,6 @@ class MainWidget(QWidget):
         for station in self.stationsWidgets:
             if station.currentPreset['name'] == presetName:
                 station.setFrequency(frequency)
-
-
-    @Slot()
-    def onPublished(self, station, message):
-        station.setStationStatus(f'Published {message}')
-        print(f'PUBLISHED: {message}')
 
 
 def main():

@@ -1,8 +1,8 @@
 from PySide6.QtCore import QObject, QThread, Slot, Signal, QIODevice
-from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
+from PySide6.QtSerialPort import QSerialPort
 import re
 
-class Anthena_1_2(QObject):
+class Antenna_1_2(QObject):
     onRssiReceived = Signal(str, str)
     onRssiReadError = Signal()
 
@@ -53,7 +53,7 @@ class Anthena_1_2(QObject):
             self.onRssiReadError.emit()
 
     @Slot(str)
-    def setAnthenaFrequency(self, frequency):
+    def setAntennaFrequency(self, frequency):
         if self.serial.isOpen():
             if self.currentFrequency == frequency:
                 return

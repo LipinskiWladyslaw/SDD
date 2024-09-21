@@ -35,7 +35,8 @@
     "minFrequency": "4900",
     "maxFrequency": "6000",
     "presetFrequencies": [
-        "4900"
+        "5635",
+        "5950"
     ]
   }
 ]

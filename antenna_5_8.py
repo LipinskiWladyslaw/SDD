@@ -1,8 +1,8 @@
-from PySide6.QtCore import QObject, QThread, Slot, Signal, QIODevice
+from PySide6.QtCore import QObject, QThread, Slot, Signal
 from tbs_fusion import TBSFusion
 import time
 
-class Anthena_5_8(QObject):
+class Antenna_5_8(QObject):
     onRssiReceived = Signal(str, str)
     onRssiReadError = Signal()
 
@@ -12,7 +12,7 @@ class Anthena_5_8(QObject):
         self.comPort = comPort
 
 
-    def setupAnthena(self):
+    def setupComPort(self):
         self.comportThread = QThread()
         self.comportThread.moveToThread(self.comportThread)
         self.comportThread.start()
@@ -25,7 +25,7 @@ class Anthena_5_8(QObject):
         )
 
     @Slot(str)
-    def setAnthenaFrequency(self, frequency):
+    def setAntennaFrequency(self, frequency):
         # Set the operating frequency
         self.fusion.set_frequency(int(frequency))
 

@@ -1,13 +1,13 @@
 [
     {
-      "stationName": 401,
+      "stationName": 464,
       "location": "Impulse",
       "frequencyRange": "1.2"
     },
     {
-      "stationName": 464,
-      "location": "Test",
-      "frequencyRange": "1.2"
+      "stationName": 511,
+      "location": "Big Stan",
+      "frequencyRange": "5.8"
     },
     {
       "stationName": 386,

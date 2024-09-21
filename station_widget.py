@@ -6,9 +6,10 @@ QGroupBox, QButtonGroup, QGridLayout, QRadioButton, QToolButton, QDialog, QListW
 )
 from PySide6.QtCore import Signal, Slot, Qt, QMetaEnum, QThread, QTimer
 from PySide6.QtGui import QPixmap, QIcon, QStandardItemModel, QStandardItem
+from rabbit_utils import RabbitMQPublisher, RabbitMQConsumer
 from iterator import FrequencyIterator
-from anthena_1_2 import Anthena_1_2
-from anthena_5_8 import Anthena_5_8
+from antenna_1_2 import Antenna_1_2
+from antenna_5_8 import Antenna_5_8
 from utility import findPresetByName
 
 import logging
@@ -27,13 +28,14 @@ class StationWidget(QWidget):
     iteratorDelayMaximum = 10
     defaultIteratorDelay = 3
     defaultIteratorMode = IteratorMode.WithinPreset
-    anthena = None
+    antenna = None
+    antennaIsReady = False
 
     stopStation = Signal()
     syncWithCurrentStation = Signal(str, str)
     localModeActivated = Signal(bool)
     onFrequencySet = Signal(str)
-    anthenaRssiReceived = Signal(str)
+    antennaRssiReceived = Signal(str)
     rabbitMQPublisherStart = Signal()
     rabbitMQConsumerStart = Signal()
 
@@ -77,7 +79,10 @@ class StationWidget(QWidget):
         self.syncUI()
 
         if self.isStationMode:
-            self.setupAnthena(self.config["frequencyRange"], self.config["comPort"])
+            self.setupAntenna(self.config["frequencyRange"], self.config["comPort"])
+
+        if self.antennaIsReady:
+            self.setupRabbitMQ()
 
 
     def setupUiElements(self):
@@ -238,6 +243,10 @@ class StationWidget(QWidget):
 
         disabled = not self.isLocalModeActive
 
+        self.setUIDisabled(disabled)
+
+
+    def setUIDisabled(self, disabled):
         self.iteratorFrequencyStepList.setDisabled(disabled)
         self.frequencySpinner.setDisabled(disabled)
         self.frequencySpinnerStepList.setDisabled(disabled)
@@ -252,50 +261,122 @@ class StationWidget(QWidget):
         self.iteratorDelaySpinner.setDisabled(disabled)
 
 
-    @Slot()
-    def setupAnthena(self, frequencyRange, comPort):
-        if frequencyRange == '1.2':
-            self.anthena = Anthena_1_2(comPort)
-            self.anthena.setupComPort()
+    def setupRabbitMQ(self):
+        rssiKey = 'RSSI'
+        frequencyKey = 'frequency'
 
-            self.onFrequencySet.connect(self.anthena.setAnthenaFrequency)
-            self.anthena.onRssiReceived.connect(self.onAnthenaRssiReceived)
-            self.anthena.onRssiReadError.connect(self.onAnthenaRssiReadError)
+        #Publisher
+        publisherKey = rssiKey if self.isStationMode else frequencyKey
+        publisherQueue = f'{publisherKey}{self.stationName}'
+        publisherExchange = f'{publisherKey}{self.stationName}'
+        self.rabbitMQPublisher = RabbitMQPublisher(publisherQueue, publisherExchange)
+
+        self.publisherThread = QThread()
+        self.rabbitMQPublisher.moveToThread(self.publisherThread)
+        self.publisherThread.start()
+
+        if self.isStationMode:
+            # valkiria
+            self.antennaRssiReceived.connect(self.rabbitMQPublisher.publish)
+            self.rabbitMQPublisher.published.connect(self.onRabbitRssiPublished)
+        else:
+            # tower
+            self.onFrequencySet.connect(self.rabbitMQPublisher.publish)
+            self.rabbitMQPublisher.published.connect(self.onRabbitFrequencyPublished)
+            
+        self.rabbitMQPublisherStart.connect(self.rabbitMQPublisher.start)
+
+        self.rabbitMQPublisherStart.emit()
+
+        # Consumer
+        consumerKey = frequencyKey if self.isStationMode else rssiKey
+        consumerQueue = f'{consumerKey}{self.stationName}'
+
+        self.rabbitMQConsumer = RabbitMQConsumer(consumerQueue)
+
+        self.consumerThread = QThread()
+        self.rabbitMQConsumer.moveToThread(self.consumerThread)
+        self.consumerThread.start()
+        
+        if self.isStationMode:
+            # valkiria
+            self.rabbitMQConsumer.received.connect(self.onRabbitFrequencyReceived)
+        else:
+            # tower
+            self.rabbitMQConsumer.received.connect(self.onRabbitRssiReceived)
+        
+        self.rabbitMQConsumerStart.connect(self.rabbitMQConsumer.start)
+
+        self.rabbitMQConsumerStart.emit()
+
+
+
+    @Slot()
+    def setupAntenna(self, frequencyRange, comPort):
+        if frequencyRange == '1.2':
+            self.antenna = Antenna_1_2(comPort)
+            self.antenna.setupComPort()
+
+            self.onFrequencySet.connect(self.antenna.setAntennaFrequency)
+            self.antenna.onRssiReceived.connect(self.onAntennaRssiReceived)
+            self.antenna.onRssiReadError.connect(self.onAntennaRssiReadError)
 
         elif frequencyRange == '5.8':
-            self.anthena = Anthena_5_8(comPort)
-            self.anthena.setupAnthena()
-
-            self.onFrequencySet.connect(self.anthena.setAnthenaFrequency)
-            self.anthena.onRssiReceived.connect(self.onAnthenaRssiReceived)
+            self.antenna = Antenna_5_8(comPort)
+            try:
+                self.antenna.setupComPort()
+                self.onFrequencySet.connect(self.antenna.setAntennaFrequency)
+                self.antenna.onRssiReceived.connect(self.onAntennaRssiReceived)
+                self.antennaIsReady = True
+            except:
+                self.setStationStatus(f'Failed to connect to comport {comPort}. Check comport and restart the app.')
+                self.setUIDisabled(True)
+                self.cloudSyncToggle.setDisabled(True)
 
 
     @Slot(str)
+    def onRabbitFrequencyPublished(self, frequency):
+        self.setStationStatus(f'[RabbitMQ] Published frequency: {frequency}')
+        
+        
+    @Slot(str)
+    def onRabbitFrequencyReceived(self, frequency):
+        if self.isLocalModeActive:
+            return
+
+        self.setStationStatus(f'[RabbitMQ] Received frequency: {frequency}')
+        self.setFrequency(frequency)
+
+        
+    @Slot(str)
+    def onRabbitRssiPublished(self, rssi):
+        self.setStationStatus(f'[RabbitMQ] Published RSSI: {rssi}')
+        
+        
+    @Slot(str)
+    def onRabbitRssiReceived(self, rssi):
+        self.setRssiForLatestFrequency(rssi)
+        self.setStationStatus(f'[RabbitMQ] Received RSSI: {rssi}')
+
+
     def setRssiForLatestFrequency(self, rssi):
         self.historyTable.setItem(0, 1, QTableWidgetItem(rssi))
 
+
     @Slot(str, str)
-    def onAnthenaRssiReceived(self, frequency, rssi):
+    def onAntennaRssiReceived(self, frequency, rssi):
         if frequency != self.frequency:
             return
         self.setRssiForLatestFrequency(rssi)
-        self.setStationStatus(f'RSSI received: {rssi}')
+        self.setStationStatus(f'[Antenna] Received RSSI: {rssi}')
         if not self.isLocalModeActive:
-            self.anthenaRssiReceived.emit(rssi)
+            self.antennaRssiReceived.emit(rssi)
 
 
     @Slot()
-    def onAnthenaRssiReadError(self):
-        self.setStationStatus('RSSI read error.')
+    def onAntennaRssiReadError(self):
+        self.setStationStatus('[Antenna] RSSI read error.')
 
-
-    @Slot(str)
-    def onAnthenaFrequencyReceived(self, frequency):
-        print(f'RabbitMQ: received frequency {frequency}')
-        if not self.isLocalModeActive:
-            self.setFrequency(frequency)
-            self.setStationStatus(f'Received {frequency}')
-            self.anthena.setAnthenaFrequency(frequency)
 
 
     @Slot(int)
@@ -391,6 +472,7 @@ class StationWidget(QWidget):
 
     @Slot()
     def setStationStatus(self, status):
+        print(status)
         self.stationStatus.setText(status)
 
 
@@ -427,7 +509,7 @@ class StationWidget(QWidget):
 
             self.iterator.start(list, self.frequency, self.iteratorDelay, implicitTrigger)
 
-        self.setStationStatus('Iterator started')
+        self.setStationStatus('[Iterator] Started...')
 
         self.syncUI()
 
@@ -437,7 +519,7 @@ class StationWidget(QWidget):
         if self.iterator:
             self.iterator.stop()
 
-        self.setStationStatus('Iterator terminated')
+        self.setStationStatus('[Iterator] Terminated')
 
         self.syncUI()
 
