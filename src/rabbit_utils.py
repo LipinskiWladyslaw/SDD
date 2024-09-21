@@ -1,5 +1,3 @@
-# This Python file uses the following encoding: utf-8
-
 from PySide6.QtCore import QObject, Slot, Signal
 import pika
 from rabbit_host_provider import RabbitHostProvider
@@ -13,12 +11,16 @@ class RabbitMQPublisher(QObject):
         self.queue = queue
         self.exchange = exchange
         self.host = RabbitHostProvider().getHost()
+        print(self.host)
 
     @Slot()
     def start(self):
-        urlParams = pika.URLParameters(self.host)
-        self.connection = pika.BlockingConnection(urlParams)
-        self.channel = self.connection.channel()
+        try:
+            urlParams = pika.URLParameters(self.host)
+            self.connection = pika.BlockingConnection(urlParams)
+            self.channel = self.connection.channel()
+        except:
+            print(f'Puslisher could not establish connection with provided host {self.host}')
 
     @Slot(str)
     def publish(self, message):
@@ -48,17 +50,20 @@ class RabbitMQConsumer(QObject):
 
     @Slot()
     def start(self):
-        urlParams = pika.URLParameters(self.host)
-        self.connection = pika.BlockingConnection(urlParams)
-        self.channel = self.connection.channel()
+        try:
+            urlParams = pika.URLParameters(self.host)
+            self.connection = pika.BlockingConnection(urlParams)
+            self.channel = self.connection.channel()
 
-        self.channel.queue_declare(queue=self.queue)
+            self.channel.queue_declare(queue=self.queue)
 
-        self.channel.basic_consume(queue=self.queue,
-                              auto_ack=True,
-                              on_message_callback=self.onMessage)
+            self.channel.basic_consume(queue=self.queue,
+                                       auto_ack=True,
+                                       on_message_callback=self.onMessage)
 
-        self.channel.start_consuming()
+            self.channel.start_consuming()
+        except:
+            print(f'Consumer could not establish connection with provided host {self.host}')
 
 
     @Slot(str)

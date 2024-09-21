@@ -1,8 +1,9 @@
 from PySide6.QtCore import QObject, QThread, Slot, Signal
+from antenna_base import AntennaBase
 from tbs_fusion import TBSFusion
 import time
 
-class Antenna_5_8(QObject):
+class Antenna_5_8(AntennaBase):
     onRssiReceived = Signal(str, str)
     onRssiReadError = Signal()
 

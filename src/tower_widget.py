@@ -17,13 +17,16 @@ class MainWidget(QWidget):
     def __init__(self, *arg, **kwargs):
         super().__init__(*arg, **kwargs)
 
-        self.setStyleSheet(loadQssFile('widget_styles.qss'))
+        dirPath = f'{sys.path[0]}\..\\'
+        stylesPath = f'{sys.path[0]}\\widget_styles.qss'
+
+        self.setStyleSheet(loadQssFile(stylesPath))
         self.setLayout(QHBoxLayout())
 
-        with open('frequency_presets.json') as presets_file:
+        with open(dirPath + 'frequency_presets.json') as presets_file:
             self.presets = json.load(presets_file)
 
-        with open('tower_stations_config.json') as stationConfigsFile:
+        with open(dirPath + 'tower_stations_config.json') as stationConfigsFile:
             self.stationConfigs = json.load(stationConfigsFile)
 
             stationsCount = len(self.stationConfigs)

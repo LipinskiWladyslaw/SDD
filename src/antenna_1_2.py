@@ -1,8 +1,9 @@
 from PySide6.QtCore import QObject, QThread, Slot, Signal, QIODevice
 from PySide6.QtSerialPort import QSerialPort
+from antenna_base import AntennaBase
 import re
 
-class Antenna_1_2(QObject):
+class Antenna_1_2(AntennaBase):
     onRssiReceived = Signal(str, str)
     onRssiReadError = Signal()
 

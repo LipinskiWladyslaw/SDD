@@ -15,13 +15,19 @@ class MainWidget(QWidget):
     def __init__(self, *arg, **kwargs):
         super().__init__(*arg, **kwargs)
 
-        self.setStyleSheet(loadQssFile('widget_styles.qss'))
+        dirPath = f'{sys.path[0]}\..\\'
+        stylesPath = f'{sys.path[0]}\\widget_styles.qss'
+
+        self.setStyleSheet(loadQssFile(stylesPath))
         self.setLayout(QHBoxLayout())
 
-        with open('frequency_presets.json') as presets_file:
+
+        print(dirPath + 'frequency_presets.json')
+
+        with open(dirPath + 'frequency_presets.json') as presets_file:
             self.presets = json.load(presets_file)
 
-        with open('valkiria_config.json') as stationConfigFile:
+        with open(dirPath + 'valkiria_config.json') as stationConfigFile:
             self.stationConfig = json.load(stationConfigFile)
 
             station = StationWidget(self.stationConfig, self.presets, self.isStationMode)

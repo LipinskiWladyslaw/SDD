@@ -1,1 +1,1 @@
-python valkiria_widget.py
+python ./src/valkiria_widget.py

@@ -1,6 +1,7 @@
 # Setup station
 1. install python
 2. run `station_setup.bat`
+3. place `rabbit_host_provider.py` in src
 
 
 # Adding images

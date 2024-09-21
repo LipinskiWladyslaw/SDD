@@ -5,7 +5,7 @@ QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSpinBox, QComboBox, QTableWidget, QT
 QGroupBox, QButtonGroup, QGridLayout, QRadioButton, QToolButton, QDialog, QListWidget
 )
 from PySide6.QtCore import Signal, Slot, Qt, QMetaEnum, QThread, QTimer
-from PySide6.QtGui import QPixmap, QIcon, QStandardItemModel, QStandardItem
+from PySide6.QtGui import QPixmap, QIcon
 from rabbit_utils import RabbitMQPublisher, RabbitMQConsumer
 from iterator import FrequencyIterator
 from antenna_1_2 import Antenna_1_2
@@ -38,6 +38,7 @@ class StationWidget(QWidget):
     antennaRssiReceived = Signal(str)
     rabbitMQPublisherStart = Signal()
     rabbitMQConsumerStart = Signal()
+    requestAntennaSetup = Signal()
 
     def __init__(self, config, presets, isStationMode, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -78,8 +79,9 @@ class StationWidget(QWidget):
         # Sync UI with data
         self.syncUI()
 
+        self.requestAntennaSetup.connect(self.setupAntenna)
         if self.isStationMode:
-            self.setupAntenna(self.config["frequencyRange"], self.config["comPort"])
+            self.requestAntennaSetup.emit()
 
         if self.antennaIsReady:
             self.setupRabbitMQ()
@@ -312,14 +314,23 @@ class StationWidget(QWidget):
 
 
     @Slot()
-    def setupAntenna(self, frequencyRange, comPort):
+    def setupAntenna(self):
+        frequencyRange = self.config["frequencyRange"]
+        comPort = self.config["comPort"]
         if frequencyRange == '1.2':
             self.antenna = Antenna_1_2(comPort)
-            self.antenna.setupComPort()
+            try:
+                self.antenna.setupComPort()
+                self.onFrequencySet.connect(self.antenna.setAntennaFrequency)
+                self.antenna.onRssiReceived.connect(self.onAntennaRssiReceived)
+                self.antenna.onRssiReadError.connect(self.onAntennaRssiReadError)
+                self.antennaIsReady = True
+            except:
+                self.antennaIsReady = False
+                self.setUIDisabled(True)
+                self.cloudSyncToggle.setDisabled(True)
+                self.setStationStatus(f'Failed to connect to comport {comPort}. Check comport and restart the app.')
 
-            self.onFrequencySet.connect(self.antenna.setAntennaFrequency)
-            self.antenna.onRssiReceived.connect(self.onAntennaRssiReceived)
-            self.antenna.onRssiReadError.connect(self.onAntennaRssiReadError)
 
         elif frequencyRange == '5.8':
             self.antenna = Antenna_5_8(comPort)
@@ -329,9 +340,10 @@ class StationWidget(QWidget):
                 self.antenna.onRssiReceived.connect(self.onAntennaRssiReceived)
                 self.antennaIsReady = True
             except:
-                self.setStationStatus(f'Failed to connect to comport {comPort}. Check comport and restart the app.')
+                self.antennaIsReady = False
                 self.setUIDisabled(True)
                 self.cloudSyncToggle.setDisabled(True)
+                self.setStationStatus(f'Failed to connect to comport {comPort}. Check comport and restart the app.')
 
 
     @Slot(str)
@@ -547,9 +559,3 @@ class FrequencyPresetListDialog(QDialog):
         layout.addWidget(self.list_widget)
 
         self.setLayout(layout)
-
-
-
-
-# if __name__ == "__main__":
-#     pass
