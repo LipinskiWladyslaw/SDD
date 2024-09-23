@@ -29,7 +29,7 @@ class StationWidget(QWidget):
     defaultIteratorDelay = 3
     defaultIteratorMode = IteratorMode.WithinPreset
     antenna = None
-    antennaIsReady = False
+    isAntennaReady = False
 
     stopStation = Signal()
     syncWithCurrentStation = Signal(str, str)
@@ -39,6 +39,7 @@ class StationWidget(QWidget):
     rabbitMQPublisherStart = Signal()
     rabbitMQConsumerStart = Signal()
     requestAntennaSetup = Signal()
+    onAntennaSetupResult = Signal(bool)
 
     def __init__(self, config, presets, isStationMode, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -79,11 +80,16 @@ class StationWidget(QWidget):
         # Sync UI with data
         self.syncUI()
 
-        self.requestAntennaSetup.connect(self.setupAntenna)
         if self.isStationMode:
+            self.requestAntennaSetup.connect(self.setupAntenna)
+            self.onAntennaSetupResult.connect(self.handleAntennaSetupResult)
+
             self.requestAntennaSetup.emit()
 
-        if self.antennaIsReady:
+            if self.isAntennaReady:
+                self.setupRabbitMQ()
+
+        else:
             self.setupRabbitMQ()
 
 
@@ -176,7 +182,7 @@ class StationWidget(QWidget):
         mainColumnWrapper.addWidget(self.historyTable)
 
         iteratorRadioGroupBox = QGroupBox('Iterator', self)
-        iteratorRadioGroupBox.setAlignment(Qt.AlignHCenter)
+        iteratorRadioGroupBox.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         mainColumnWrapper.addWidget(iteratorRadioGroupBox)
 
         iteratorRadioGroupGrid = QGridLayout(iteratorRadioGroupBox)
@@ -324,9 +330,9 @@ class StationWidget(QWidget):
                 self.onFrequencySet.connect(self.antenna.setAntennaFrequency)
                 self.antenna.onRssiReceived.connect(self.onAntennaRssiReceived)
                 self.antenna.onRssiReadError.connect(self.onAntennaRssiReadError)
-                self.antennaIsReady = True
+                self.onAntennaSetupResult.emit(True)
             except:
-                self.antennaIsReady = False
+                self.onAntennaSetupResult.emit(False)
                 self.setUIDisabled(True)
                 self.cloudSyncToggle.setDisabled(True)
                 self.setStationStatus(f'Failed to connect to comport {comPort}. Check comport and restart the app.')
@@ -338,9 +344,9 @@ class StationWidget(QWidget):
                 self.antenna.setupComPort()
                 self.onFrequencySet.connect(self.antenna.setAntennaFrequency)
                 self.antenna.onRssiReceived.connect(self.onAntennaRssiReceived)
-                self.antennaIsReady = True
+                self.onAntennaSetupResult.emit(True)
             except:
-                self.antennaIsReady = False
+                self.onAntennaSetupResult.emit(False)
                 self.setUIDisabled(True)
                 self.cloudSyncToggle.setDisabled(True)
                 self.setStationStatus(f'Failed to connect to comport {comPort}. Check comport and restart the app.')
@@ -389,6 +395,11 @@ class StationWidget(QWidget):
     def onAntennaRssiReadError(self):
         self.setStationStatus('[Antenna] RSSI read error.')
 
+
+    @Slot(bool)
+    def handleAntennaSetupResult(self, isReady):
+        self.isAntennaReady = isReady
+        self.setStationStatus(f'[Antenna] Antenna {"is ready" if isReady else "failed to setup"}')
 
 
     @Slot(int)
@@ -530,8 +541,7 @@ class StationWidget(QWidget):
         self.isFrequencyIteratorActive = False
         if self.iterator:
             self.iterator.stop()
-
-        self.setStationStatus('[Iterator] Terminated')
+            self.setStationStatus('[Iterator] Terminated')
 
         self.syncUI()
 

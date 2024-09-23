@@ -11,7 +11,6 @@ class RabbitMQPublisher(QObject):
         self.queue = queue
         self.exchange = exchange
         self.host = RabbitHostProvider().getHost()
-        print(self.host)
 
     @Slot()
     def start(self):
